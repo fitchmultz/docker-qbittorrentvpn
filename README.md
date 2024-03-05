@@ -58,7 +58,7 @@ Docker container which runs the latest [qBittorrent](https://github.com/qbittorr
 ## Ports
 | Port | Proto | Required | Function | Example |
 |----------|----------|----------|----------|----------|
-| `8080` | TCP | Yes | qBittorrent WebUI | `8080:8080`|
+| `8280` | TCP | Yes | qBittorrent WebUI | `8280:8080`|
 | `8999` | TCP | Yes | qBittorrent TCP Listening Port | `8999:8999`|
 | `8999` | UDP | Yes | qBittorrent UDP Listening Port | `8999:8999/udp`|
 
