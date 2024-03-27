@@ -1,7 +1,7 @@
 version: '3'
 services:
   app:
-    image: 'ghcr.io/fitchmultz/qbittorrentvpn:latest'
+    image: 'ghcr.io/fitchmultz/docker-qbittorrentvpn:latest'
     volumes:
       - ${CONFIG_PATH}:/config
       - ${DOWNLOADS_PATH}:/downloads
