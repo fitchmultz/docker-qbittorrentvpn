@@ -85,31 +85,29 @@ RUN apt update && apt upgrade -y && apt install -y  --no-install-recommends ca-c
     /var/tmp/*
 
 # Compile and install libtorrent-rasterbar
-RUN apt update && apt upgrade -y && apt install -y --no-install-recommends build-essential ca-certificates curl jq libssl-dev \
-    && LIBTORRENT_ASSETS=$(curl -sX GET "https://api.github.com/repos/arvidn/libtorrent/releases" | jq '.[] | select(.prerelease==false) | select(.target_commitish=="RC_1_2") | .assets_url' | head -n 1 | tr -d '"') \
-    && LIBTORRENT_DOWNLOAD_URL=$(curl -sX GET ${LIBTORRENT_ASSETS} | jq '.[0] .browser_download_url' | tr -d '"') \
-    && LIBTORRENT_NAME=$(curl -sX GET ${LIBTORRENT_ASSETS} | jq '.[0] .name' | tr -d '"') \
-    && curl -o /opt/${LIBTORRENT_NAME} -L ${LIBTORRENT_DOWNLOAD_URL} \
-    && tar -xzf /opt/${LIBTORRENT_NAME} \
-    && rm /opt/${LIBTORRENT_NAME} \
-    && cd /opt/libtorrent-rasterbar* \
-    && cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -DCMAKE_CXX_STANDARD=17 \
-    && cmake --build build --parallel $(nproc) \
-    && cmake --install build \
-    && cd /opt \
-    && rm -rf /opt/* \
-    && apt purge -y \
-    build-essential \
-    ca-certificates \
-    curl \
-    jq \
-    libssl-dev \
-    && apt-get clean \
-    && apt --purge autoremove -y  \
-    && rm -rf \
-    /var/lib/apt/lists/* \
-    /tmp/* \
-    /var/tmp/*
+RUN apt update && apt upgrade -y
+RUN apt install -y --no-install-recommends build-essential ca-certificates curl jq libssl-dev
+RUN echo "Fetching libtorrent assets..." && \
+    LIBTORRENT_ASSETS=$(curl -sX GET "https://api.github.com/repos/arvidn/libtorrent/releases" | jq '.[] | select(.prerelease==false) | select(.target_commitish=="RC_1_2") | .assets_url' | head -n 1 | tr -d '"') && \
+    echo "Assets URL: $LIBTORRENT_ASSETS" && \
+    LIBTORRENT_DOWNLOAD_URL=$(curl -sX GET ${LIBTORRENT_ASSETS} | jq '.[0].browser_download_url' | tr -d '"') && \
+    echo "Download URL: $LIBTORRENT_DOWNLOAD_URL" && \
+    LIBTORRENT_NAME=$(curl -sX GET ${LIBTORRENT_ASSETS} | jq '.[0].name' | tr -d '"') && \
+    echo "File Name: $LIBTORRENT_NAME" && \
+    curl -o /opt/${LIBTORRENT_NAME} -L ${LIBTORRENT_DOWNLOAD_URL} && \
+    tar -xzf /opt/${LIBTORRENT_NAME} -C /opt/ && \
+    rm /opt/${LIBTORRENT_NAME} && \
+    cd /opt/libtorrent-rasterbar* && \
+    cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -DCMAKE_CXX_STANDARD=17 && \
+    cmake --build build --parallel $(nproc) && \
+    cmake --install build && \
+    cd /opt && \
+    rm -rf /opt/libtorrent-rasterbar*
+RUN apt purge -y build-essential ca-certificates curl jq libssl-dev && \
+    apt-get clean && \
+    apt --purge autoremove -y && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 
 # Compile and install qBittorrent
 RUN apt update && apt upgrade -y && apt install -y --no-install-recommends build-essential ca-certificates curl git jq libssl-dev pkg-config qtbase5-dev qttools5-dev zlib1g-dev \
