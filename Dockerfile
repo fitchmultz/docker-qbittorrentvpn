@@ -1,5 +1,6 @@
 # qBittorrent, OpenVPN and WireGuard, qbittorrentvpn
-FROM debian:bullseye-slim
+# FROM debian:bullseye-slim
+FROM ubuntu:20.04
 
 WORKDIR /opt
 
