@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Boost
 RUN BOOST_VERSION_DOT=$(curl -sX GET "https://www.boost.org/feed/news.rss" | xmllint --xpath '//rss/channel/item/title/text()' - | awk -F 'Version' '{print $2 FS}' - | sed -e 's/Version//g;s/\ //g' | xargs | awk 'NR==1{print $1}' -) \
     && BOOST_VERSION=$(echo ${BOOST_VERSION_DOT} | tr '.' '_') \
-    && wget -P /opt/ https://github.com/boostorg/boost/releases/download/boost-${BOOST_VERSION_DOT}/boost-${BOOST_VERSION_DOT}.7z && 7z x /opt/boost-${BOOST_VERSION_DOT}.7z -o/opt/
+    && wget -P /opt/ https://github.com/boostorg/boost/releases/download/boost-${BOOST_VERSION_DOT}/boost-${BOOST_VERSION_DOT}-b2-nodocs.7z && 7z x /opt/boost-${BOOST_VERSION_DOT}-b2-nodocs.7z -o/opt/
 
 RUN BOOST_VERSION_DOT=$(curl -sX GET "https://www.boost.org/feed/news.rss" | xmllint --xpath '//rss/channel/item/title/text()' - | awk -F 'Version' '{print $2 FS}' - | sed -e 's/Version//g;s/\ //g' | xargs | awk 'NR==1{print $1}' -) \
     && BOOST_VERSION=$(echo ${BOOST_VERSION_DOT} | tr '.' '_') \
@@ -30,7 +30,7 @@ RUN BOOST_VERSION_DOT=$(curl -sX GET "https://www.boost.org/feed/news.rss" | xml
     && ./bootstrap.sh --prefix=/usr \
     && ./b2 --prefix=/usr install \
     && cd /opt \
-    && rm -rf /opt/boost-${BOOST_VERSION_DOT} /opt/boost-${BOOST_VERSION_DOT}.7z
+    && rm -rf /opt/boost-${BOOST_VERSION_DOT} /opt/boost-${BOOST_VERSION_DOT}-b2-nodocs.7z
 
 # Clean up unnecessary packages and files
 RUN apt-get purge -y --auto-remove \
