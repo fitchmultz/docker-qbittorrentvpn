@@ -25,7 +25,7 @@ RUN BOOST_VERSION_DOT=$(curl -sX GET "https://www.boost.org/feed/news.rss" | xml
 
 RUN BOOST_VERSION_DOT=$(curl -sX GET "https://www.boost.org/feed/news.rss" | xmllint --xpath '//rss/channel/item/title/text()' - | awk -F 'Version' '{print $2 FS}' - | sed -e 's/Version//g;s/\ //g' | xargs | awk 'NR==1{print $1}' -) \
     && BOOST_VERSION=$(echo ${BOOST_VERSION_DOT} | tr '.' '_') \
-    && cd /opt/boost-${BOOST_VERSION_DOT} \ 
+    && cd /opt/boost-${BOOST_VERSION_DOT} \
     && find . -type f -name "*.sh" -exec chmod a+x {} \; \
     && ./bootstrap.sh --prefix=/usr \
     && ./b2 --prefix=/usr install \
@@ -84,28 +84,32 @@ RUN apt update && apt upgrade -y && apt install -y  --no-install-recommends ca-c
     /tmp/* \
     /var/tmp/*
 
-# Install necessary packages
-RUN apt update && apt upgrade -y && apt install -y --no-install-recommends build-essential ca-certificates curl jq libssl-dev
-
-# Fetch and unpack libtorrent
-RUN LIBTORRENT_ASSETS=$(curl -sX GET "https://api.github.com/repos/arvidn/libtorrent/releases" | jq '.[] | select(.prerelease==false) | select(.target_commitish=="RC_1_2") | .assets_url' | head -n 1 | tr -d '"') \
-    && LIBTORRENT_DOWNLOAD_URL=$(curl -sX GET $LIBTORRENT_ASSETS | jq '.[0] .browser_download_url' | tr -d '"') \
-    && LIBTORRENT_NAME=$(curl -sX GET $LIBTORRENT_ASSETS | jq '.[0] .name' | tr -d '"') \
+# Compile and install libtorrent-rasterbar
+RUN apt update && apt upgrade -y && apt install -y --no-install-recommends build-essential ca-certificates curl jq libssl-dev \
+    && LIBTORRENT_ASSETS=$(curl -sX GET "https://api.github.com/repos/arvidn/libtorrent/releases" | jq '.[] | select(.prerelease==false) | select(.target_commitish=="RC_1_2") | .assets_url' | head -n 1 | tr -d '"') \
+    && LIBTORRENT_DOWNLOAD_URL=$(curl -sX GET ${LIBTORRENT_ASSETS} | jq '.[0] .browser_download_url' | tr -d '"') \
+    && LIBTORRENT_NAME=$(curl -sX GET ${LIBTORRENT_ASSETS} | jq '.[0] .name' | tr -d '"') \
     && curl -o /opt/${LIBTORRENT_NAME} -L ${LIBTORRENT_DOWNLOAD_URL} \
-    && tar -xzf /opt/${LIBTORRENT_NAME} -C /opt/ \
-    && rm /opt/${LIBTORRENT_NAME}
-
-# Build libtorrent
-RUN cd /opt/libtorrent-rasterbar* \
+    && tar -xzf /opt/${LIBTORRENT_NAME} \
+    && rm /opt/${LIBTORRENT_NAME} \
+    && cd /opt/libtorrent-rasterbar* \
     && cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -DCMAKE_CXX_STANDARD=17 \
     && cmake --build build --parallel $(nproc) \
-    && cmake --install build
-
-# Cleanup
-RUN rm -rf /opt/* \
-    && apt purge -y build-essential ca-certificates curl jq libssl-dev \
+    && cmake --install build \
+    && cd /opt \
+    && rm -rf /opt/* \
+    && apt purge -y \
+    build-essential \
+    ca-certificates \
+    curl \
+    jq \
+    libssl-dev \
     && apt-get clean \
-    && apt --purge autoremove -y
+    && apt --purge autoremove -y  \
+    && rm -rf \
+    /var/lib/apt/lists/* \
+    /tmp/* \
+    /var/tmp/*
 
 # Compile and install qBittorrent
 RUN apt update && apt upgrade -y && apt install -y --no-install-recommends build-essential ca-certificates curl git jq libssl-dev pkg-config qtbase5-dev qttools5-dev zlib1g-dev \
