@@ -1,6 +1,6 @@
 # Latest release Qbittorrent, OpenVPN and WireGuard
 # Forked from DyonR/docker-qbittorrentvpn
-FROM debian:bullseye-slim
+FROM debian:bullseye
 
 WORKDIR /opt
 
