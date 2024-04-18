@@ -1,23 +1,22 @@
-# Latest release Qbittorrent, OpenVPN and WireGuard
-# Forked from DyonR/docker-qbittorrentvpn
-FROM debian:bullseye
+# qBittorrent, OpenVPN and WireGuard, qbittorrentvpn
+FROM debian:bullseye-slim
 
 WORKDIR /opt
 
 RUN usermod -u 99 nobody
 
 # Make directories
-RUN mkdir -p /downloads /config/qBittorrent /etc/openvpn /etc/qbittorrent
+RUN mkdir -p /downloads /config/qBittorrent /etc/openvpn /etc/qbittorrent /scripts
 
 # Install boost
 RUN apt update \
-    && apt upgrade -y  \
+    && apt upgrade -y \
     && apt install -y --no-install-recommends \
     curl \
     ca-certificates \
     g++ \
     libxml2-utils \
-    && BOOST_VERSION_DOT="1.84.0" \
+    && BOOST_VERSION_DOT=$(curl -sX GET "https://www.boost.org/feed/news.rss" | xmllint --xpath '//rss/channel/item/title/text()' - | awk -F 'Version' '{print $2 FS}' - | sed -e 's/Version//g;s/\ //g' | xargs | awk 'NR==1{print $1}' -) \
     && BOOST_VERSION=$(echo ${BOOST_VERSION_DOT} | head -n 1 | sed -e 's/\./_/g') \
     && curl -o /opt/boost_${BOOST_VERSION}.tar.gz -L https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION}.tar.gz \
     && tar -xzf /opt/boost_${BOOST_VERSION}.tar.gz -C /opt \
@@ -46,8 +45,10 @@ RUN apt update \
     curl \
     jq \
     unzip \
-    && NINJA_ASSETS=$(curl -sX GET "https://api.github.com/repos/ninja-build/ninja/releases" | jq '.[] | select(.prerelease==false) | .assets_url' | head -n 1 | tr -d '"') \
-    && NINJA_DOWNLOAD_URL=$(curl -sX GET ${NINJA_ASSETS} | jq '.[] | select(.name | match("ninja-linux";"i")) .browser_download_url' | tr -d '"') \
+    `# Force v1.11.0, Ninja v1.12.0 broke something` \
+    && NINJA_DOWNLOAD_URL=https://github.com/ninja-build/ninja/releases/download/v1.11.0/ninja-linux.zip \
+    `# && NINJA_ASSETS=$(curl -sX GET "https://api.github.com/repos/ninja-build/ninja/releases" | jq '.[] | select(.prerelease==false) | .assets_url' | head -n 1 | tr -d '"')` \
+    `# && NINJA_DOWNLOAD_URL=$(curl -sX GET ${NINJA_ASSETS} | jq '.[] | select(.name | match("ninja-linux";"i")) .browser_download_url' | tr -d '"')` \
     && curl -o /opt/ninja-linux.zip -L ${NINJA_DOWNLOAD_URL} \
     && unzip /opt/ninja-linux.zip -d /opt \
     && mv /opt/ninja /usr/local/bin/ninja \
@@ -171,6 +172,7 @@ RUN apt update \
 RUN echo "deb http://deb.debian.org/debian/ unstable main" > /etc/apt/sources.list.d/unstable-wireguard.list \
     && printf 'Package: *\nPin: release a=unstable\nPin-Priority: 150\n' > /etc/apt/preferences.d/limit-unstable \
     && apt update \
+    && apt upgrade -y \
     && apt install -y --no-install-recommends \
     ca-certificates \
     dos2unix \
@@ -195,19 +197,16 @@ RUN echo "deb http://deb.debian.org/debian/ unstable main" > /etc/apt/sources.li
     /tmp/* \
     /var/tmp/*
 
-# Install (un)compressing tools like unrar, 7z, unzip and zip, curl, wget, and nano
+# Install (un)compressing tools like unrar, 7z, unzip and zip
 RUN echo "deb http://deb.debian.org/debian/ bullseye non-free" > /etc/apt/sources.list.d/non-free-unrar.list \
     && printf 'Package: *\nPin: release a=non-free\nPin-Priority: 150\n' > /etc/apt/preferences.d/limit-non-free \
     && apt update \
-    && apt -y upgrade \
-    && apt -y install --no-install-recommends \
+    && apt upgrade -y \
+    && apt install -y --no-install-recommends \
     unrar \
     p7zip-full \
     unzip \
     zip \
-    curl\
-    wget\
-    nano\
     && apt-get clean \
     && apt --purge autoremove -y \
     && rm -rf \
