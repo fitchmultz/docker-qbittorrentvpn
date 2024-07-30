@@ -7,7 +7,7 @@ Docker container which runs the latest [qBittorrent](https://github.com/qbittorr
 [preview]: https://raw.githubusercontent.com/DyonR/docker-templates/master/Screenshots/qbittorrentvpn/qbittorrentvpn-webui.png "qBittorrent WebUI"
 ![alt text][preview]
  
-# Docker Features 
+# Docker Features  
 * Base: Debian bullseye-slim
 * [qBittorrent](https://github.com/qbittorrent/qBittorrent) compiled from source
 * [libtorrent](https://github.com/arvidn/libtorrent) compiled from source
