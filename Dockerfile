@@ -131,23 +131,35 @@ RUN apt update \
     curl \
     git \
     jq \
-    libssl-dev \
+    libssl-dev=1.1.1* \
     pkg-config \
     qtbase5-dev \
     qttools5-dev \
     qtbase5-private-dev \
     zlib1g-dev \
-    && QBITTORRENT_RELEASE=$(curl -sX GET "https://api.github.com/repos/qBittorrent/qBittorrent/tags" | jq '.[] | select(.name | index ("alpha") | not) | select(.name | index ("beta") | not) | select(.name | index ("rc") | not) | .name' | head -n 1 | tr -d '"') \
-    && curl -o /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz -L "https://github.com/qbittorrent/qBittorrent/archive/refs/tags/${QBITTORRENT_RELEASE}.tar.gz" \
-    && tar -xzf /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz \
+    && QBITTORRENT_RELEASE=$(curl -sX GET "https://api.github.com/repos/qBittorrent/qBittorrent/releases" \
+    | jq -r '.[] | select(.prerelease==false) | .tag_name' \
+    | head -n 1) \
+    && if [ -z "${QBITTORRENT_RELEASE}" ]; then \
+    echo "Failed to get qBittorrent release version" && exit 1; \
+    fi \
+    && echo "Building qBittorrent version: ${QBITTORRENT_RELEASE}" \
+    && curl -fsSL -o /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz \
+    "https://github.com/qbittorrent/qBittorrent/archive/refs/tags/${QBITTORRENT_RELEASE}.tar.gz" \
+    && tar -xzf /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz -C /opt \
     && rm /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz \
     && cd /opt/qBittorrent-${QBITTORRENT_RELEASE} \
-    && cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DGUI=OFF -DCMAKE_CXX_STANDARD=17 \
-    && cmake --build build --parallel $(nproc) \
+    && cmake -G Ninja -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DGUI=OFF \
+    -DCMAKE_CXX_STANDARD=17 \
+    -DVERBOSE_CONFIGURE=ON \
+    && cmake --build build --parallel $(nproc) || exit 1 \
     && cmake --install build \
     && cd /opt \
-    && rm -rf /opt/* \
-    && apt purge -y \
+    && rm -rf /opt/qBittorrent-${QBITTORRENT_RELEASE} \
+    && apt-get purge -y \
     build-essential \
     ca-certificates \
     curl \
@@ -160,11 +172,14 @@ RUN apt update \
     qtbase5-private-dev \
     zlib1g-dev \
     && apt-get clean \
-    && apt --purge autoremove -y
-# && rm -rf \
-# /var/lib/apt/lists/* \
-# /tmp/* \
-# /var/tmp/*
+    && apt-get --purge autoremove -y \
+    && rm -rf \
+    /var/lib/apt/lists/* \
+    /tmp/* \
+    /var/tmp/* \
+    /root/.cache/* \
+    /root/.cmake/* \
+    /root/.local/*
 
 # Install WireGuard and some other dependencies some of the scripts in the container rely on.
 RUN echo "deb http://deb.debian.org/debian/ unstable main" > /etc/apt/sources.list.d/unstable-wireguard.list \
