@@ -14,22 +14,32 @@ RUN mkdir -p /downloads /config/qBittorrent /etc/openvpn /etc/qbittorrent /scrip
 
 # Install boost
 RUN apt update \
+    && apt upgrade -y \
     && apt install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    g++ \
     libxml2-utils \
-    && BOOST_VERSION_DOT=$(curl -sX GET "https://www.boost.org/feed/news.rss" | xmllint --xpath '//rss/channel/item/title/text()' - | awk -F 'Version' '{print $2 FS}' - | sed -e 's/Version//g;s/\ //g' | xargs | awk 'NR==1{print $1}') \
-    && BOOST_VERSION=$(echo ${BOOST_VERSION_DOT} | sed -e 's/\./_/g') \
-    && echo "Installing Boost version: ${BOOST_VERSION_DOT}" \
+    && BOOST_VERSION_DOT=$(curl -sX GET "https://www.boost.org/feed/news.rss" | xmllint --xpath '//rss/channel/item/title/text()' - | awk -F 'Version' '{print $2 FS}' - | sed -e 's/Version//g;s/\ //g' | xargs | awk 'NR==1{print $1}' -) \
+    && BOOST_VERSION=$(echo ${BOOST_VERSION_DOT} | head -n 1 | sed -e 's/\./_/g') \
     && curl -o /opt/boost_${BOOST_VERSION}.tar.gz -L https://archives.boost.io/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION}.tar.gz \
     && tar -xzf /opt/boost_${BOOST_VERSION}.tar.gz -C /opt \
     && cd /opt/boost_${BOOST_VERSION} \
     && ./bootstrap.sh --prefix=/usr \
-    && ./b2 --prefix=/usr install -j$(nproc) \
+    && ./b2 --prefix=/usr install \
     && cd /opt \
-    && rm -rf /opt/boost_${BOOST_VERSION}* \
-    && apt purge -y libxml2-utils \
+    && rm -rf /opt/* \
+    && apt -y purge \
+    curl \
+    ca-certificates \
+    g++ \
+    libxml2-utils \
     && apt-get clean \
     && apt --purge autoremove -y \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && rm -rf \
+    /var/lib/apt/lists/* \
+    /tmp/* \
+    /var/tmp/*
 
 # Install Ninja
 RUN apt update \
