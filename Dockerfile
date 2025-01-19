@@ -1,9 +1,5 @@
 # qBittorrent, OpenVPN and WireGuard, qbittorrentvpn
-FROM docker.io/bensuperpc/qt:debian-bookworm-6.5.3
-
-# Set Qt environment variables properly
-ENV LD_LIBRARY_PATH=/opt/Qt/6.5.3/gcc_64/lib
-ENV PATH=/opt/Qt/6.5.3/gcc_64/bin:$PATH
+FROM debian:bullseye-slim
 
 WORKDIR /opt
 
@@ -126,59 +122,43 @@ RUN apt update \
     /tmp/* \
     /var/tmp/*
 
-# Install Qt 6.5 and compile qBittorrent
+# Compile and install qBittorrent
 RUN apt update \
     && apt upgrade -y \
     && apt install -y --no-install-recommends \
     build-essential \
     ca-certificates \
-    cmake \
     curl \
     git \
     jq \
-    libgl1-mesa-dev \
     libssl-dev \
-    libvulkan-dev \
-    libxcb-icccm4 \
-    libxcb-image0 \
-    libxcb-keysyms1 \
-    libxcb-render-util0 \
-    libxcb-xinerama0 \
-    libxcb-xkb1 \
-    libxkbcommon-x11-0 \
-    ninja-build \
     pkg-config \
-    qt6-base-dev \
-    qt6-base-private-dev \
-    qt6-tools-dev \
+    qtbase5-dev \
+    qttools5-dev \
+    qtbase5-private-dev \
     zlib1g-dev \
-    # Build qBittorrent
     && QBITTORRENT_RELEASE=$(curl -sX GET "https://api.github.com/repos/qBittorrent/qBittorrent/tags" | jq '.[] | select(.name | index ("alpha") | not) | select(.name | index ("beta") | not) | select(.name | index ("rc") | not) | .name' | head -n 1 | tr -d '"') \
-    && curl -o /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz -L "https://github.com/qbittorrent/qBittorrent/archive/refs/tags/${QBITTORRENT_RELEASE}.tar.gz" \
+    && curl -o /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz -L "https://github.com/qbittorrent/qBittorrent/archive/${QBITTORRENT_RELEASE}.tar.gz" \
     && tar -xzf /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz \
     && rm /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz \
     && cd /opt/qBittorrent-${QBITTORRENT_RELEASE} \
-    && cmake -G Ninja -B build \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=/usr/local \
-    -DGUI=OFF \
-    -DCMAKE_CXX_STANDARD=17 \
+    && cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DGUI=OFF -DCMAKE_CXX_STANDARD=17 \
     && cmake --build build --parallel $(nproc) \
     && cmake --install build \
     && cd /opt \
-    && rm -rf /opt/qBittorrent-${QBITTORRENT_RELEASE} \
-    # Cleanup
+    && rm -rf /opt/* \
     && apt purge -y \
     build-essential \
-    cmake \
+    ca-certificates \
     curl \
     git \
     jq \
-    ninja-build \
+    libssl-dev \
     pkg-config \
-    qt6-base-dev \
-    qt6-base-private-dev \
-    qt6-tools-dev \
+    qtbase5-dev \
+    qttools5-dev \
+    qtbase5-private-dev \
+    zlib1g-dev \
     && apt-get clean \
     && apt --purge autoremove -y \
     && rm -rf \
@@ -186,27 +166,11 @@ RUN apt update \
     /tmp/* \
     /var/tmp/*
 
-# Install runtime Qt dependencies
-RUN apt update \
-    && apt install -y --no-install-recommends \
-    libqt6core6 \
-    libqt6network6 \
-    libqt6sql6 \
-    libqt6xml6 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install WireGuard and network tools
+# Install WireGuard and some other dependencies some of the scripts in the container rely on.
 RUN echo "deb http://deb.debian.org/debian/ unstable main" > /etc/apt/sources.list.d/unstable-wireguard.list \
     && printf 'Package: *\nPin: release a=unstable\nPin-Priority: 150\n' > /etc/apt/preferences.d/limit-unstable \
     && apt update \
     && apt upgrade -y \
-    && apt install -y --no-install-recommends \
-    wget \
-    iproute2 \
-    && wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb \
-    && dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb \
-    && rm libssl1.1_1.1.1f-1ubuntu2_amd64.deb \
     && apt install -y --no-install-recommends \
     ca-certificates \
     dos2unix \
@@ -217,6 +181,7 @@ RUN echo "deb http://deb.debian.org/debian/ unstable main" > /etc/apt/sources.li
     libqt5network5 \
     libqt5xml5 \
     libqt5sql5 \
+    libssl1.1 \
     moreutils \
     net-tools \
     openresolv \
