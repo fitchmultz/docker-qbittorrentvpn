@@ -133,9 +133,9 @@ RUN apt update \
     jq \
     libssl-dev \
     pkg-config \
-    qtbase5-dev \
-    qttools5-dev \
-    qtbase5-private-dev \
+    qtbase6-dev \
+    qttools6-dev \
+    qtbase6-private-dev \
     zlib1g-dev \
     && QBITTORRENT_RELEASE=$(curl -sX GET "https://api.github.com/repos/qBittorrent/qBittorrent/tags" | jq '.[] | select(.name | index ("alpha") | not) | select(.name | index ("beta") | not) | select(.name | index ("rc") | not) | .name' | head -n 1 | tr -d '"') \
     && curl -o /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz -L "https://github.com/qbittorrent/qBittorrent/archive/refs/tags/${QBITTORRENT_RELEASE}.tar.gz" \
@@ -155,9 +155,9 @@ RUN apt update \
     jq \
     libssl-dev \
     pkg-config \
-    qtbase5-dev \
-    qttools5-dev \
-    qtbase5-private-dev \
+    qtbase6-dev \
+    qttools6-dev \
+    qtbase6-private-dev \
     zlib1g-dev \
     && apt-get clean \
     && apt --purge autoremove -y \
