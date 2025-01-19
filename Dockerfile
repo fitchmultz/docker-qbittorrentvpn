@@ -1,9 +1,9 @@
 # qBittorrent, OpenVPN and WireGuard, qbittorrentvpn
 FROM debian:bookworm-slim
 
-# Set Qt environment variables
-ENV PATH="/opt/Qt/6.5.3/gcc_64/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/opt/Qt/6.5.3/gcc_64/lib:${LD_LIBRARY_PATH}"
+# Set Qt environment variables properly
+ENV LD_LIBRARY_PATH=/opt/Qt/6.5.3/gcc_64/lib
+ENV PATH=/opt/Qt/6.5.3/gcc_64/bin:$PATH
 
 WORKDIR /opt
 
@@ -135,7 +135,6 @@ RUN apt update \
     cmake \
     curl \
     git \
-    gnupg \
     jq \
     libgl1-mesa-dev \
     libssl-dev \
@@ -149,22 +148,10 @@ RUN apt update \
     libxkbcommon-x11-0 \
     ninja-build \
     pkg-config \
-    software-properties-common \
+    qt6-base-dev \
+    qt6-base-private-dev \
+    qt6-tools-dev \
     zlib1g-dev \
-    # Install Qt 6.5.3
-    && curl -fsSL https://download.qt.io/official_releases/qt/6.5/6.5.3/qt-unified-linux-x64-6.5.3-online.run -o qt-installer.run \
-    && chmod +x qt-installer.run \
-    && ./qt-installer.run --accept-licenses --accept-obligations --no-force-installations \
-    --root /opt/Qt \
-    --auto-answer telemetry-question=No \
-    --include qt.qt6.653.gcc_64 \
-    && rm qt-installer.run \
-    # Create required symlinks
-    && ln -s /opt/Qt/6.5.3/gcc_64/lib/libQt6Core.so.6 /usr/lib/x86_64-linux-gnu/ \
-    && ln -s /opt/Qt/6.5.3/gcc_64/lib/libQt6Network.so.6 /usr/lib/x86_64-linux-gnu/ \
-    && ln -s /opt/Qt/6.5.3/gcc_64/lib/libQt6Sql.so.6 /usr/lib/x86_64-linux-gnu/ \
-    && ln -s /opt/Qt/6.5.3/gcc_64/lib/libQt6Xml.so.6 /usr/lib/x86_64-linux-gnu/ \
-    && ldconfig \
     # Build qBittorrent
     && QBITTORRENT_RELEASE=$(curl -sX GET "https://api.github.com/repos/qBittorrent/qBittorrent/tags" | jq '.[] | select(.name | index ("alpha") | not) | select(.name | index ("beta") | not) | select(.name | index ("rc") | not) | .name' | head -n 1 | tr -d '"') \
     && curl -o /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz -L "https://github.com/qbittorrent/qBittorrent/archive/refs/tags/${QBITTORRENT_RELEASE}.tar.gz" \
@@ -173,7 +160,6 @@ RUN apt update \
     && cd /opt/qBittorrent-${QBITTORRENT_RELEASE} \
     && cmake -G Ninja -B build \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_PREFIX_PATH=/opt/Qt/6.5.3/gcc_64 \
     -DCMAKE_INSTALL_PREFIX=/usr/local \
     -DGUI=OFF \
     -DCMAKE_CXX_STANDARD=17 \
@@ -187,17 +173,29 @@ RUN apt update \
     cmake \
     curl \
     git \
-    gnupg \
     jq \
     ninja-build \
     pkg-config \
-    software-properties-common \
+    qt6-base-dev \
+    qt6-base-private-dev \
+    qt6-tools-dev \
     && apt-get clean \
     && apt --purge autoremove -y \
     && rm -rf \
     /var/lib/apt/lists/* \
     /tmp/* \
     /var/tmp/*
+
+# Install runtime Qt dependencies
+RUN apt update \
+    && apt install -y --no-install-recommends \
+    libqt6core6 \
+    libqt6network6 \
+    libqt6sql6 \
+    libqt6xml6 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install WireGuard and network tools
 RUN echo "deb http://deb.debian.org/debian/ unstable main" > /etc/apt/sources.list.d/unstable-wireguard.list \
     && printf 'Package: *\nPin: release a=unstable\nPin-Priority: 150\n' > /etc/apt/preferences.d/limit-unstable \
