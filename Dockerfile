@@ -136,6 +136,10 @@ RUN apt update \
     qt6-base-dev \
     qt6-tools-dev \
     qt6-base-private-dev \
+    libqt6core6 \
+    libqt6network6 \
+    libqt6sql6 \
+    libqt6xml6 \
     zlib1g-dev \
     && QBITTORRENT_RELEASE=$(curl -sX GET "https://api.github.com/repos/qBittorrent/qBittorrent/tags" | jq '.[] | select(.name | index ("alpha") | not) | select(.name | index ("beta") | not) | select(.name | index ("rc") | not) | .name' | head -n 1 | tr -d '"') \
     && curl -o /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz -L "https://github.com/qbittorrent/qBittorrent/archive/refs/tags/${QBITTORRENT_RELEASE}.tar.gz" \
@@ -159,6 +163,10 @@ RUN apt update \
     qt6-tools-dev \
     qt6-base-private-dev \
     zlib1g-dev \
+    libqt6core6 \
+    libqt6network6 \
+    libqt6sql6 \
+    libqt6xml6 \
     && apt-get clean \
     && apt --purge autoremove -y \
     && rm -rf \
