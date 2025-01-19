@@ -1,5 +1,5 @@
 # qBittorrent, OpenVPN and WireGuard, qbittorrentvpn
-FROM debian:bookworm-slim
+FROM docker.io/bensuperpc/qt:debian-bookworm-6.5.3
 
 WORKDIR /opt
 
