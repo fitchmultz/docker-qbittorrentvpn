@@ -12,24 +12,18 @@ RUN usermod -u 99 nobody
 # Make directories
 RUN mkdir -p /downloads /config/qBittorrent /etc/openvpn /etc/qbittorrent /scripts
 
-# Install boost
-RUN apt update \
-    && apt install -y --no-install-recommends \
-    libxml2-utils \
-    && BOOST_VERSION_DOT=$(curl -sX GET "https://www.boost.org/feed/news.rss" | xmllint --xpath '//rss/channel/item/title/text()' - | awk -F 'Version' '{print $2 FS}' - | sed -e 's/Version//g;s/\ //g' | xargs | awk 'NR==1{print $1}') \
-    && BOOST_VERSION=$(echo ${BOOST_VERSION_DOT} | sed -e 's/\./_/g') \
-    && echo "Installing Boost version: ${BOOST_VERSION_DOT}" \
-    && curl -o /opt/boost_${BOOST_VERSION}.tar.gz -L https://archives.boost.io/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION}.tar.gz \
-    && tar -xzf /opt/boost_${BOOST_VERSION}.tar.gz -C /opt \
-    && cd /opt/boost_${BOOST_VERSION} \
+# Install boost with fixed version
+RUN BOOST_VERSION="1.84.0" \
+    && BOOST_VERSION_US=$(echo ${BOOST_VERSION} | sed -e 's/\./_/g') \
+    && echo "Installing Boost version: ${BOOST_VERSION}" \
+    && curl -o /opt/boost_${BOOST_VERSION_US}.tar.gz -L https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_US}.tar.gz \
+    && tar -xzf /opt/boost_${BOOST_VERSION_US}.tar.gz -C /opt \
+    && cd /opt/boost_${BOOST_VERSION_US} \
     && ./bootstrap.sh --prefix=/usr \
     && ./b2 --prefix=/usr install -j$(nproc) \
     && cd /opt \
-    && rm -rf /opt/boost_${BOOST_VERSION}* \
-    && apt purge -y libxml2-utils \
-    && apt-get clean \
-    && apt --purge autoremove -y \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && rm -rf /opt/boost_${BOOST_VERSION_US}* \
+    && rm -rf /tmp/* /var/tmp/*
 
 # Install Ninja
 RUN apt update \
