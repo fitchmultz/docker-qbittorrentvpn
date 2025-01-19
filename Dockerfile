@@ -172,6 +172,11 @@ RUN echo "deb http://deb.debian.org/debian/ unstable main" > /etc/apt/sources.li
     && apt update \
     && apt upgrade -y \
     && apt install -y --no-install-recommends \
+    wget \
+    && wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb \
+    && dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb \
+    && rm libssl1.1_1.1.1f-1ubuntu2_amd64.deb \
+    && apt install -y --no-install-recommends \
     ca-certificates \
     dos2unix \
     inetutils-ping \
@@ -181,7 +186,6 @@ RUN echo "deb http://deb.debian.org/debian/ unstable main" > /etc/apt/sources.li
     libqt5network5 \
     libqt5xml5 \
     libqt5sql5 \
-    libssl1.1 \
     moreutils \
     net-tools \
     openresolv \
