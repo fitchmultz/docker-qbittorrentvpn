@@ -177,13 +177,14 @@ RUN apt update \
     /tmp/* \
     /var/tmp/*
 
-# Install WireGuard and some other dependencies some of the scripts in the container rely on.
+# Install WireGuard and network tools
 RUN echo "deb http://deb.debian.org/debian/ unstable main" > /etc/apt/sources.list.d/unstable-wireguard.list \
     && printf 'Package: *\nPin: release a=unstable\nPin-Priority: 150\n' > /etc/apt/preferences.d/limit-unstable \
     && apt update \
     && apt upgrade -y \
     && apt install -y --no-install-recommends \
     wget \
+    iproute2 \
     && wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb \
     && dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb \
     && rm libssl1.1_1.1.1f-1ubuntu2_amd64.deb \
