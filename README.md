@@ -1,4 +1,4 @@
-# [qBittorrent](https://github.com/qbittorrent/qBittorrent), WireGuard and OpenVPN
+# [qBittorrent] (https://github.com/qbittorrent/qBittorrent), WireGuard and OpenVPN
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/dyonr/qbittorrentvpn)](https://hub.docker.com/r/dyonr/qbittorrentvpn)
 [![Docker Image Size (tag)](https://img.shields.io/docker/image-size/dyonr/qbittorrentvpn/latest)]
