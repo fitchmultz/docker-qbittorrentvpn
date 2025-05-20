@@ -16,7 +16,7 @@ RUN apt update \
     ca-certificates \
     g++ \
     libxml2-utils \
-    && BOOST_VERSION_DOT=$(curl -sX GET "https://www.boost.org/feed/news.rss" | xmllint --xpath '//rss/channel/item/title/text()' - | awk -F 'Version' '{print $2 FS}' - | sed -e 's/Version//g;s/\ //g' | xargs | awk 'NR==1{print $1}' -) \
+    && && BOOST_VERSION_DOT="1.85.0"  \
     && echo "Determined BOOST_VERSION_DOT: ${BOOST_VERSION_DOT}" \
     && BOOST_VERSION=$(echo ${BOOST_VERSION_DOT} | head -n 1 | sed -e 's/\./_/g') \
     && echo "Determined BOOST_VERSION: ${BOOST_VERSION}" \
