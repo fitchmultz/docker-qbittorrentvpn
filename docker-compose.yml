@@ -1,4 +1,3 @@
-version: '3'
 services:
   app:
     image: 'ghcr.io/fitchmultz/docker-qbittorrentvpn:latest'
@@ -18,7 +17,7 @@ services:
       - VPN_USERNAME=${VPN_USERNAME}
       - VPN_PASSWORD=${VPN_PASSWORD}
     ports:
-      - "8282:8080"
+      - '8282:8080'
     cap_add:
       - NET_ADMIN
     sysctls:

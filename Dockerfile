@@ -1,5 +1,5 @@
 # qBittorrent, OpenVPN and WireGuard, qbittorrentvpn
-FROM debian:bullseye-slim 
+FROM debian:bullseye-slim
 
 WORKDIR /opt
 
@@ -17,8 +17,18 @@ RUN apt update \
     g++ \
     libxml2-utils \
     && BOOST_VERSION_DOT=$(curl -sX GET "https://www.boost.org/feed/news.rss" | xmllint --xpath '//rss/channel/item/title/text()' - | awk -F 'Version' '{print $2 FS}' - | sed -e 's/Version//g;s/\ //g' | xargs | awk 'NR==1{print $1}' -) \
+    && echo "Determined BOOST_VERSION_DOT: ${BOOST_VERSION_DOT}" \
     && BOOST_VERSION=$(echo ${BOOST_VERSION_DOT} | head -n 1 | sed -e 's/\./_/g') \
-    && curl -o /opt/boost_${BOOST_VERSION}.tar.gz -L https://archives.boost.io/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION}.tar.gz \
+    && echo "Determined BOOST_VERSION: ${BOOST_VERSION}" \
+    && FULL_BOOST_URL="https://archives.boost.io/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION}.tar.gz" \
+    && echo "Constructed Download URL: ${FULL_BOOST_URL}" \
+    && curl -o /opt/boost_${BOOST_VERSION}.tar.gz -L ${FULL_BOOST_URL} \
+    && echo "Inspecting downloaded file..." \
+    && ls -lh /opt/boost_${BOOST_VERSION}.tar.gz \
+    && file /opt/boost_${BOOST_VERSION}.tar.gz \
+    && echo "First 200 bytes of downloaded file:" \
+    && head -c 200 /opt/boost_${BOOST_VERSION}.tar.gz \
+    && echo "Attempting to extract..." \
     && tar -xzf /opt/boost_${BOOST_VERSION}.tar.gz -C /opt \
     && cd /opt/boost_${BOOST_VERSION} \
     && ./bootstrap.sh --prefix=/usr \
