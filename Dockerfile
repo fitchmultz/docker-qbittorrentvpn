@@ -16,7 +16,7 @@ RUN apt update \
     ca-certificates \
     g++ \
     libxml2-utils \
-    && && BOOST_VERSION_DOT="1.85.0"  \
+    && && BOOST_VERSION_DOT="1.84.0"  \
     && echo "Determined BOOST_VERSION_DOT: ${BOOST_VERSION_DOT}" \
     && BOOST_VERSION=$(echo ${BOOST_VERSION_DOT} | head -n 1 | sed -e 's/\./_/g') \
     && echo "Determined BOOST_VERSION: ${BOOST_VERSION}" \
