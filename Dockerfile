@@ -1,5 +1,10 @@
 # qBittorrent, OpenVPN and WireGuard, qbittorrentvpn
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
+
+# Optional overrides (leave unset for auto-detect)
+ARG BOOST_VERSION_DOT
+ARG BOOST_VERSION
+ARG GITHUB_TOKEN
 
 WORKDIR /opt
 
@@ -8,38 +13,34 @@ RUN usermod -u 99 nobody
 # Make directories
 RUN mkdir -p /downloads /config/qBittorrent /etc/openvpn /etc/qbittorrent /scripts
 
-# Install boost
+# Install Boost (auto-detect stable via GitHub API, with fallback)
+RUN set -e; \
+    apt update && apt upgrade -y && apt install -y --no-install-recommends curl ca-certificates g++ jq; \
+    AUTH_HEADER=""; [ -n "${GITHUB_TOKEN}" ] && AUTH_HEADER="Authorization: Bearer ${GITHUB_TOKEN}"; \
+    if [ -z "${BOOST_VERSION_DOT}" ] || [ -z "${BOOST_VERSION}" ]; then \
+      BOOST_TAG=$(curl -fsSL -H "Accept: application/vnd.github+json" ${AUTH_HEADER:+-H "$AUTH_HEADER"} -H "X-GitHub-Api-Version: 2022-11-28" \
+        "https://api.github.com/repos/boostorg/boost/releases?per_page=20" \
+        | jq -r '[.[] | select(.prerelease==false) | .tag_name | select(startswith("boost-"))][0]'); \
+      BOOST_VERSION_DOT=$(echo "${BOOST_TAG}" | sed -E 's/^boost-//'); \
+      [ -z "${BOOST_VERSION_DOT}" ] || [ "${BOOST_VERSION_DOT}" = "null" ] && BOOST_VERSION_DOT=1.86.0; \
+      BOOST_VERSION=$(echo "${BOOST_VERSION_DOT}" | tr . _); \
+    fi; \
+    echo "Using Boost ${BOOST_VERSION_DOT} (${BOOST_VERSION})"; \
+    curl -fL -o /opt/boost_${BOOST_VERSION}.tar.gz "https://archives.boost.io/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION}.tar.gz"; \
+    tar -xzf /opt/boost_${BOOST_VERSION}.tar.gz -C /opt; \
+    cd /opt/boost_${BOOST_VERSION}; \
+    ./bootstrap.sh --prefix=/usr; \
+    ./b2 --prefix=/usr install; \
+    cd /opt; rm -rf /opt/*; \
+    apt -y purge curl ca-certificates g++ jq; \
+    apt-get clean; apt --purge autoremove -y; \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Install Ninja (multi-arch safe)
 RUN apt update \
     && apt upgrade -y \
     && apt install -y --no-install-recommends \
-    curl \
-    ca-certificates \
-    g++ \
-    libxml2-utils \
-    && BOOST_VERSION_DOT=$(curl -sX GET "https://www.boost.org/feed/news.rss" | xmllint --xpath '//rss/channel/item/title/text()' - | awk -F 'Version' '{print $2 FS}' - | sed -e 's/Version//g;s/\ //g' | xargs | awk 'NR==1{print $1}' -) \
-    && echo "Determined BOOST_VERSION_DOT: ${BOOST_VERSION_DOT}" \
-    && BOOST_VERSION=$(echo ${BOOST_VERSION_DOT} | head -n 1 | sed -e 's/\./_/g') \
-    && echo "Determined BOOST_VERSION: ${BOOST_VERSION}" \
-    && FULL_BOOST_URL="https://archives.boost.io/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION}.tar.gz" \
-    && echo "Constructed Download URL: ${FULL_BOOST_URL}" \
-    && curl -o /opt/boost_${BOOST_VERSION}.tar.gz -L ${FULL_BOOST_URL} \
-    && echo "Inspecting downloaded file..." \
-    && ls -lh /opt/boost_${BOOST_VERSION}.tar.gz \
-    && file /opt/boost_${BOOST_VERSION}.tar.gz \
-    && echo "First 200 bytes of downloaded file:" \
-    && head -c 200 /opt/boost_${BOOST_VERSION}.tar.gz \
-    && echo "Attempting to extract..." \
-    && tar -xzf /opt/boost_${BOOST_VERSION}.tar.gz -C /opt \
-    && cd /opt/boost_${BOOST_VERSION} \
-    && ./bootstrap.sh --prefix=/usr \
-    && ./b2 --prefix=/usr install \
-    && cd /opt \
-    && rm -rf /opt/* \
-    && apt -y purge \
-    curl \
-    ca-certificates \
-    g++ \
-    libxml2-utils \
+    ninja-build \
     && apt-get clean \
     && apt --purge autoremove -y \
     && rm -rf \
@@ -47,50 +48,11 @@ RUN apt update \
     /tmp/* \
     /var/tmp/*
 
-# Install Ninja
-RUN apt update \
-    && apt upgrade -y \
-    && apt install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    jq \
-    unzip \
-    && NINJA_ASSETS=$(curl -sX GET "https://api.github.com/repos/ninja-build/ninja/releases" | jq '.[] | select(.prerelease==false) | .assets_url' | head -n 1 | tr -d '"') \
-    && NINJA_DOWNLOAD_URL=$(curl -sX GET ${NINJA_ASSETS} | jq '.[] | select(.name | match("ninja-linux";"i"))| select(.name | index ("aarch64") | not) .browser_download_url' | tr -d '"') \
-    && curl -o /opt/ninja-linux.zip -L ${NINJA_DOWNLOAD_URL} \
-    && unzip /opt/ninja-linux.zip -d /opt \
-    && mv /opt/ninja /usr/local/bin/ninja \
-    && chmod +x /usr/local/bin/ninja \
-    && rm -rf /opt/* \
-    && apt purge -y \
-    ca-certificates \
-    curl \
-    jq \
-    unzip \
-    && apt-get clean \
-    && apt --purge autoremove -y \
-    && rm -rf \
-    /var/lib/apt/lists/* \
-    /tmp/* \
-    /var/tmp/*
-
-# Install cmake
+# Install CMake (multi-arch safe)
 RUN apt update \
     && apt upgrade -y \
     && apt install -y  --no-install-recommends \
-    ca-certificates \
-    curl \
-    jq \
-    && CMAKE_ASSETS=$(curl -sX GET "https://api.github.com/repos/Kitware/CMake/releases" | jq '.[] | select(.prerelease==false) | .assets_url' | head -n 1 | tr -d '"') \
-    && CMAKE_DOWNLOAD_URL=$(curl -sX GET ${CMAKE_ASSETS} | jq '.[] | select(.name | match("Linux-x86_64.sh";"i")) .browser_download_url' | tr -d '"') \
-    && curl -o /opt/cmake.sh -L ${CMAKE_DOWNLOAD_URL} \
-    && chmod +x /opt/cmake.sh \
-    && /bin/bash /opt/cmake.sh --skip-license --prefix=/usr \
-    && rm -rf /opt/* \
-    && apt purge -y \
-    ca-certificates \
-    curl \
-    jq \
+    cmake \
     && apt-get clean \
     && apt --purge autoremove -y \
     && rm -rf \
@@ -98,57 +60,69 @@ RUN apt update \
     /tmp/* \
     /var/tmp/*
 
-# Compile and install libtorrent-rasterbar
-RUN apt update \
-    && apt upgrade -y \
-    && apt install -y --no-install-recommends \
-    build-essential \
-    ca-certificates \
-    curl \
-    jq \
-    libssl-dev \
-    && LIBTORRENT_ASSETS=$(curl -sX GET "https://api.github.com/repos/arvidn/libtorrent/releases" | jq '.[] | select(.prerelease==false) | select(.target_commitish=="RC_2_0") | .assets_url' | head -n 1 | tr -d '"') \
-    && LIBTORRENT_DOWNLOAD_URL=$(curl -sX GET ${LIBTORRENT_ASSETS} | jq '.[0] .browser_download_url' | tr -d '"') \
-    && LIBTORRENT_NAME=$(curl -sX GET ${LIBTORRENT_ASSETS} | jq '.[0] .name' | tr -d '"') \
-    && curl -o /opt/${LIBTORRENT_NAME} -L ${LIBTORRENT_DOWNLOAD_URL} \
-    && tar -xzf /opt/${LIBTORRENT_NAME} \
-    && rm /opt/${LIBTORRENT_NAME} \
-    && cd /opt/libtorrent-rasterbar* \
-    && cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -DCMAKE_CXX_STANDARD=17 \
-    && cmake --build build --parallel $(nproc) \
-    && cmake --install build \
-    && cd /opt \
-    && rm -rf /opt/* \
-    && apt purge -y \
-    build-essential \
-    ca-certificates \
-    curl \
-    jq \
-    libssl-dev \
-    && apt-get clean \
-    && apt --purge autoremove -y  \
-    && rm -rf \
-    /var/lib/apt/lists/* \
-    /tmp/* \
-    /var/tmp/*
+# Compile and install libtorrent-rasterbar (clone with submodules)
+RUN set -e; \
+    apt update && apt upgrade -y && apt install -y --no-install-recommends \
+      build-essential ca-certificates curl jq libssl-dev git; \
+    AUTH_HEADER=""; if [ -n "${GITHUB_TOKEN}" ]; then AUTH_HEADER="Authorization: Bearer ${GITHUB_TOKEN}"; fi; \
+    LIBTORRENT_VERSION=$(curl -fsSL -H "Accept: application/vnd.github+json" ${AUTH_HEADER:+-H "$AUTH_HEADER"} -H "X-GitHub-Api-Version: 2022-11-28" \
+        "https://api.github.com/repos/arvidn/libtorrent/releases?per_page=100" \
+        | jq -r '[.[] | select(.prerelease==false) | select(.target_commitish=="RC_2_0") | .tag_name][0]'); \
+    if [ -z "${LIBTORRENT_VERSION}" ] || [ "${LIBTORRENT_VERSION}" = "null" ]; then \
+        LIBTORRENT_VERSION=$(curl -fsSL -H "Accept: application/vnd.github+json" ${AUTH_HEADER:+-H "$AUTH_HEADER"} -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/arvidn/libtorrent/tags?per_page=100" \
+            | jq -r '.[].name | select(startswith("v2."))' \
+            | head -n 1); \
+    fi; \
+    [ -z "${LIBTORRENT_VERSION}" ] && LIBTORRENT_VERSION="v2.0.11"; \
+    echo "Using libtorrent ${LIBTORRENT_VERSION}"; \
+    git clone --depth 1 --branch ${LIBTORRENT_VERSION} --recurse-submodules https://github.com/arvidn/libtorrent.git /opt/libtorrent; \
+    cd /opt/libtorrent; \
+    cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -DCMAKE_CXX_STANDARD=17; \
+    cmake --build build --parallel $(nproc); \
+    cmake --install build; \
+    cd /opt; rm -rf /opt/*; \
+    apt purge -y build-essential ca-certificates curl jq libssl-dev git; \
+    apt-get clean; apt --purge autoremove -y; \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Compile and install qBittorrent
-RUN apt update \
+# Compile and install qBittorrent (Qt6, OpenSSL >=3 for v5.x)
+RUN echo "deb http://deb.debian.org/debian bookworm-backports main" > /etc/apt/sources.list.d/backports.list \
+    && echo "deb http://deb.debian.org/debian trixie main" > /etc/apt/sources.list.d/trixie.list \
+    && printf 'APT::Default-Release "bookworm";\n' > /etc/apt/apt.conf.d/99defaultrelease \
+    && printf 'Package: qt6-*\nPin: release n=trixie\nPin-Priority: 990\n' > /etc/apt/preferences.d/qt6-trixie.pref \
+    && apt update \
     && apt upgrade -y \
     && apt install -y --no-install-recommends \
-    build-essential \
-    ca-certificates \
-    curl \
-    git \
-    jq \
-    libssl-dev \
-    pkg-config \
-    qtbase5-dev \
-    qttools5-dev \
-    qtbase5-private-dev \
-    zlib1g-dev \
-    # && QBITTORRENT_RELEASE=$(curl -sX GET "https://api.github.com/repos/qBittorrent/qBittorrent/tags" | jq '.[] | select(.name | index ("alpha") | not) | select(.name | index ("beta") | not) | select(.name | index ("rc") | not) | .name' | head -n 1 | tr -d '"') \
-    && QBITTORRENT_RELEASE="release-4.6.7" \
+       build-essential \
+       ca-certificates \
+       curl \
+       git \
+       jq \
+       libssl-dev \
+       pkg-config \
+       zlib1g-dev \
+    && apt install -y -t trixie --no-install-recommends \
+       qt6-base-dev \
+       qt6-base-private-dev \
+       qt6-tools-dev \
+       qt6-tools-dev-tools \
+    && AUTH_HEADER="" \
+    && [ -n "${GITHUB_TOKEN}" ] && AUTH_HEADER="Authorization: Bearer ${GITHUB_TOKEN}" || true \
+    && QBT_MAJOR=${QBT_MAJOR:-5} \
+    && QBITTORRENT_VERSION=$(curl -fsSL \
+          -H "Accept: application/vnd.github+json" \
+          ${AUTH_HEADER:+-H "$AUTH_HEADER"} \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          "https://api.github.com/repos/qBittorrent/qBittorrent/tags?per_page=50" \
+          | jq -r '.[].name' \
+          | grep -E "^release-${QBT_MAJOR}\\." \
+          | grep -Evi '(alpha|beta|rc)' \
+          | sed 's/^release-//' \
+          | sort -Vr \
+          | head -n 1) \
+    && if [ -z "${QBITTORRENT_VERSION}" ]; then QBITTORRENT_VERSION="4.6.7"; fi \
+    && QBITTORRENT_RELEASE="release-${QBITTORRENT_VERSION}" \
     && curl -o /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz -L "https://github.com/qbittorrent/qBittorrent/archive/${QBITTORRENT_RELEASE}.tar.gz" \
     && tar -xzf /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz \
     && rm /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz \
@@ -166,9 +140,10 @@ RUN apt update \
     jq \
     libssl-dev \
     pkg-config \
-    qtbase5-dev \
-    qttools5-dev \
-    qtbase5-private-dev \
+    qt6-base-dev \
+    qt6-tools-dev \
+    qt6-tools-dev-tools \
+    qt6-base-private-dev \
     zlib1g-dev \
     && apt-get clean \
     && apt --purge autoremove -y \
@@ -177,28 +152,30 @@ RUN apt update \
     /tmp/* \
     /var/tmp/*
 
-# Install WireGuard and some other dependencies some of the scripts in the container rely on.
-RUN echo "deb http://deb.debian.org/debian/ unstable main" > /etc/apt/sources.list.d/unstable-wireguard.list \
-    && printf 'Package: *\nPin: release a=unstable\nPin-Priority: 150\n' > /etc/apt/preferences.d/limit-unstable \
+# Install WireGuard and other runtime deps
+RUN echo "deb http://deb.debian.org/debian bookworm-backports main" > /etc/apt/sources.list.d/backports.list \
+    && echo "deb http://deb.debian.org/debian trixie main" > /etc/apt/sources.list.d/trixie.list \
+    && printf 'APT::Default-Release "bookworm";\n' > /etc/apt/apt.conf.d/99defaultrelease \
+    && printf 'Package: libqt6*\nPin: release n=trixie\nPin-Priority: 990\n' > /etc/apt/preferences.d/qt6-trixie-runtime.pref \
     && apt update \
     && apt upgrade -y \
-    && apt install -y --no-install-recommends \
-    ca-certificates \
-    dos2unix \
-    inetutils-ping \
-    ipcalc \
-    iptables \
-    kmod \
-    libqt5network5 \
-    libqt5xml5 \
-    libqt5sql5 \
-    libssl1.1 \
-    moreutils \
-    net-tools \
-    openresolv \
-    openvpn \
-    procps \
-    wireguard-tools \
+    && apt install -y -t bookworm --no-install-recommends \
+       ca-certificates \
+       dos2unix \
+       inetutils-ping \
+       ipcalc \
+       iptables \
+       kmod \
+       moreutils \
+       net-tools \
+       openresolv \
+       openvpn \
+       procps \
+       wireguard-tools \
+    && apt install -y -t trixie --no-install-recommends \
+       libqt6network6 \
+       libqt6xml6 \
+       libqt6sql6 \
     && apt-get clean \
     && apt --purge autoremove -y \
     && rm -rf \
