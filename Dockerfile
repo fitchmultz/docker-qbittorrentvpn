@@ -164,6 +164,7 @@ RUN echo "deb http://deb.debian.org/debian bookworm-backports main" > /etc/apt/s
        dos2unix \
        inetutils-ping \
        ipcalc \
+       iproute2 \
        iptables \
        kmod \
        moreutils \
