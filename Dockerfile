@@ -91,6 +91,7 @@ RUN echo "deb http://deb.debian.org/debian bookworm-backports main" > /etc/apt/s
     && echo "deb http://deb.debian.org/debian trixie main" > /etc/apt/sources.list.d/trixie.list \
     && printf 'APT::Default-Release "bookworm";\n' > /etc/apt/apt.conf.d/99defaultrelease \
     && printf 'Package: qt6-*\nPin: release n=trixie\nPin-Priority: 990\n' > /etc/apt/preferences.d/qt6-trixie.pref \
+    && printf 'Package: libssl*\nPin: release n=bookworm-security\nPin-Priority: 990\n' > /etc/apt/preferences.d/libssl-security.pref \
     && apt update \
     && apt upgrade -y \
     && apt install -y --no-install-recommends \
