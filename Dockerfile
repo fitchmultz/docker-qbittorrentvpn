@@ -26,8 +26,16 @@ RUN set -e; \
     DETECTED_BOOST_VERSION_DOT=1.89.0; \
     fi; \
     DETECTED_BOOST_VERSION=$(echo "${DETECTED_BOOST_VERSION_DOT}" | tr . _); \
-    [ -n "${BOOST_VERSION_DOT}" ] || BOOST_VERSION_DOT="${DETECTED_BOOST_VERSION_DOT}"; \
-    [ -n "${BOOST_VERSION}" ] || BOOST_VERSION="${DETECTED_BOOST_VERSION}"; \
+    if [ -z "${BOOST_VERSION_DOT}" ]; then \
+        if [ -n "${BOOST_VERSION}" ]; then \
+            BOOST_VERSION_DOT=$(echo "${BOOST_VERSION}" | tr _ .); \
+        else \
+            BOOST_VERSION_DOT="${DETECTED_BOOST_VERSION_DOT}"; \
+        fi; \
+    fi; \
+    if [ -z "${BOOST_VERSION}" ]; then \
+        BOOST_VERSION=$(echo "${BOOST_VERSION_DOT}" | tr . _); \
+    fi; \
     fi; \
     echo "Using Boost ${BOOST_VERSION_DOT} (${BOOST_VERSION})"; \
     curl -fL -o /opt/boost_${BOOST_VERSION}.tar.gz "https://archives.boost.io/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION}.tar.gz"; \
