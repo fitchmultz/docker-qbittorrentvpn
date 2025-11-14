@@ -20,21 +20,24 @@ RUN set -e; \
     if [ -z "${BOOST_VERSION_DOT}" ] || [ -z "${BOOST_VERSION}" ]; then \
     BOOST_TAG=$(curl -fsSL -H "Accept: application/vnd.github+json" ${AUTH_HEADER:+-H "$AUTH_HEADER"} -H "X-GitHub-Api-Version: 2022-11-28" \
     "https://api.github.com/repos/boostorg/boost/releases?per_page=20" \
-    | jq -r '[.[] | select(.prerelease==false) | .tag_name | select(startswith("boost-"))][0]'); \
+    | jq -r '.[] | select(.prerelease==false) | .tag_name' \
+    | grep '^boost-' \
+    | grep -Evi '(alpha|beta|rc)' \
+    | head -n 1); \
     DETECTED_BOOST_VERSION_DOT=$(echo "${BOOST_TAG}" | sed -E 's/^boost-//'); \
     if [ -z "${DETECTED_BOOST_VERSION_DOT}" ] || [ "${DETECTED_BOOST_VERSION_DOT}" = "null" ]; then \
     DETECTED_BOOST_VERSION_DOT=1.89.0; \
     fi; \
     DETECTED_BOOST_VERSION=$(echo "${DETECTED_BOOST_VERSION_DOT}" | tr . _); \
     if [ -z "${BOOST_VERSION_DOT}" ]; then \
-        if [ -n "${BOOST_VERSION}" ]; then \
-            BOOST_VERSION_DOT=$(echo "${BOOST_VERSION}" | tr _ .); \
-        else \
-            BOOST_VERSION_DOT="${DETECTED_BOOST_VERSION_DOT}"; \
-        fi; \
+    if [ -n "${BOOST_VERSION}" ]; then \
+    BOOST_VERSION_DOT=$(echo "${BOOST_VERSION}" | tr _ .); \
+    else \
+    BOOST_VERSION_DOT="${DETECTED_BOOST_VERSION_DOT}"; \
+    fi; \
     fi; \
     if [ -z "${BOOST_VERSION}" ]; then \
-        BOOST_VERSION=$(echo "${BOOST_VERSION_DOT}" | tr . _); \
+    BOOST_VERSION=$(echo "${BOOST_VERSION_DOT}" | tr . _); \
     fi; \
     fi; \
     echo "Using Boost ${BOOST_VERSION_DOT} (${BOOST_VERSION})"; \
