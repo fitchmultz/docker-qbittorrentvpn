@@ -18,12 +18,16 @@ RUN set -e; \
     apt update && apt upgrade -y && apt install -y --no-install-recommends curl ca-certificates g++ jq; \
     AUTH_HEADER=""; [ -n "${GITHUB_TOKEN}" ] && AUTH_HEADER="Authorization: Bearer ${GITHUB_TOKEN}"; \
     if [ -z "${BOOST_VERSION_DOT}" ] || [ -z "${BOOST_VERSION}" ]; then \
-      BOOST_TAG=$(curl -fsSL -H "Accept: application/vnd.github+json" ${AUTH_HEADER:+-H "$AUTH_HEADER"} -H "X-GitHub-Api-Version: 2022-11-28" \
-        "https://api.github.com/repos/boostorg/boost/releases?per_page=20" \
-        | jq -r '[.[] | select(.prerelease==false) | .tag_name | select(startswith("boost-"))][0]'); \
-      BOOST_VERSION_DOT=$(echo "${BOOST_TAG}" | sed -E 's/^boost-//'); \
-      [ -z "${BOOST_VERSION_DOT}" ] || [ "${BOOST_VERSION_DOT}" = "null" ] && BOOST_VERSION_DOT=1.86.0; \
-      BOOST_VERSION=$(echo "${BOOST_VERSION_DOT}" | tr . _); \
+    BOOST_TAG=$(curl -fsSL -H "Accept: application/vnd.github+json" ${AUTH_HEADER:+-H "$AUTH_HEADER"} -H "X-GitHub-Api-Version: 2022-11-28" \
+    "https://api.github.com/repos/boostorg/boost/releases?per_page=20" \
+    | jq -r '[.[] | select(.prerelease==false) | .tag_name | select(startswith("boost-"))][0]'); \
+    DETECTED_BOOST_VERSION_DOT=$(echo "${BOOST_TAG}" | sed -E 's/^boost-//'); \
+    if [ -z "${DETECTED_BOOST_VERSION_DOT}" ] || [ "${DETECTED_BOOST_VERSION_DOT}" = "null" ]; then \
+    DETECTED_BOOST_VERSION_DOT=1.89.0; \
+    fi; \
+    DETECTED_BOOST_VERSION=$(echo "${DETECTED_BOOST_VERSION_DOT}" | tr . _); \
+    [ -n "${BOOST_VERSION_DOT}" ] || BOOST_VERSION_DOT="${DETECTED_BOOST_VERSION_DOT}"; \
+    [ -n "${BOOST_VERSION}" ] || BOOST_VERSION="${DETECTED_BOOST_VERSION}"; \
     fi; \
     echo "Using Boost ${BOOST_VERSION_DOT} (${BOOST_VERSION})"; \
     curl -fL -o /opt/boost_${BOOST_VERSION}.tar.gz "https://archives.boost.io/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION}.tar.gz"; \
@@ -63,16 +67,16 @@ RUN apt update \
 # Compile and install libtorrent-rasterbar (clone with submodules)
 RUN set -e; \
     apt update && apt upgrade -y && apt install -y --no-install-recommends \
-      build-essential ca-certificates curl jq libssl-dev git; \
+    build-essential ca-certificates curl jq libssl-dev git; \
     AUTH_HEADER=""; if [ -n "${GITHUB_TOKEN}" ]; then AUTH_HEADER="Authorization: Bearer ${GITHUB_TOKEN}"; fi; \
     LIBTORRENT_VERSION=$(curl -fsSL -H "Accept: application/vnd.github+json" ${AUTH_HEADER:+-H "$AUTH_HEADER"} -H "X-GitHub-Api-Version: 2022-11-28" \
-        "https://api.github.com/repos/arvidn/libtorrent/releases?per_page=100" \
-        | jq -r '[.[] | select(.prerelease==false) | select(.target_commitish=="RC_2_0") | .tag_name][0]'); \
+    "https://api.github.com/repos/arvidn/libtorrent/releases?per_page=100" \
+    | jq -r '[.[] | select(.prerelease==false) | select(.target_commitish=="RC_2_0") | .tag_name][0]'); \
     if [ -z "${LIBTORRENT_VERSION}" ] || [ "${LIBTORRENT_VERSION}" = "null" ]; then \
-        LIBTORRENT_VERSION=$(curl -fsSL -H "Accept: application/vnd.github+json" ${AUTH_HEADER:+-H "$AUTH_HEADER"} -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/arvidn/libtorrent/tags?per_page=100" \
-            | jq -r '.[].name | select(startswith("v2."))' \
-            | head -n 1); \
+    LIBTORRENT_VERSION=$(curl -fsSL -H "Accept: application/vnd.github+json" ${AUTH_HEADER:+-H "$AUTH_HEADER"} -H "X-GitHub-Api-Version: 2022-11-28" \
+    "https://api.github.com/repos/arvidn/libtorrent/tags?per_page=100" \
+    | jq -r '.[].name | select(startswith("v2."))' \
+    | head -n 1); \
     fi; \
     [ -z "${LIBTORRENT_VERSION}" ] && LIBTORRENT_VERSION="v2.0.11"; \
     echo "Using libtorrent ${LIBTORRENT_VERSION}"; \
@@ -95,33 +99,33 @@ RUN echo "deb http://deb.debian.org/debian bookworm-backports main" > /etc/apt/s
     && apt update \
     && apt upgrade -y \
     && apt install -y --no-install-recommends \
-       build-essential \
-       ca-certificates \
-       curl \
-       git \
-       jq \
-       libssl-dev \
-       pkg-config \
-       zlib1g-dev \
+    build-essential \
+    ca-certificates \
+    curl \
+    git \
+    jq \
+    libssl-dev \
+    pkg-config \
+    zlib1g-dev \
     && apt install -y -t trixie --no-install-recommends \
-       qt6-base-dev \
-       qt6-base-private-dev \
-       qt6-tools-dev \
-       qt6-tools-dev-tools \
+    qt6-base-dev \
+    qt6-base-private-dev \
+    qt6-tools-dev \
+    qt6-tools-dev-tools \
     && AUTH_HEADER="" \
     && [ -n "${GITHUB_TOKEN}" ] && AUTH_HEADER="Authorization: Bearer ${GITHUB_TOKEN}" || true \
     && QBT_MAJOR=${QBT_MAJOR:-5} \
     && QBITTORRENT_VERSION=$(curl -fsSL \
-          -H "Accept: application/vnd.github+json" \
-          ${AUTH_HEADER:+-H "$AUTH_HEADER"} \
-          -H "X-GitHub-Api-Version: 2022-11-28" \
-          "https://api.github.com/repos/qBittorrent/qBittorrent/tags?per_page=50" \
-          | jq -r '.[].name' \
-          | grep -E "^release-${QBT_MAJOR}\\." \
-          | grep -Evi '(alpha|beta|rc)' \
-          | sed 's/^release-//' \
-          | sort -Vr \
-          | head -n 1) \
+    -H "Accept: application/vnd.github+json" \
+    ${AUTH_HEADER:+-H "$AUTH_HEADER"} \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "https://api.github.com/repos/qBittorrent/qBittorrent/tags?per_page=50" \
+    | jq -r '.[].name' \
+    | grep -E "^release-${QBT_MAJOR}\\." \
+    | grep -Evi '(alpha|beta|rc)' \
+    | sed 's/^release-//' \
+    | sort -Vr \
+    | head -n 1) \
     && if [ -z "${QBITTORRENT_VERSION}" ]; then QBITTORRENT_VERSION="4.6.7"; fi \
     && QBITTORRENT_RELEASE="release-${QBITTORRENT_VERSION}" \
     && curl -o /opt/qBittorrent-${QBITTORRENT_RELEASE}.tar.gz -L "https://github.com/qbittorrent/qBittorrent/archive/${QBITTORRENT_RELEASE}.tar.gz" \
@@ -161,23 +165,23 @@ RUN echo "deb http://deb.debian.org/debian bookworm-backports main" > /etc/apt/s
     && apt update \
     && apt upgrade -y \
     && apt install -y -t bookworm --no-install-recommends \
-       ca-certificates \
-       dos2unix \
-       inetutils-ping \
-       ipcalc \
-       iproute2 \
-       iptables \
-       kmod \
-       moreutils \
-       net-tools \
-       openresolv \
-       openvpn \
-       procps \
-       wireguard-tools \
+    ca-certificates \
+    dos2unix \
+    inetutils-ping \
+    ipcalc \
+    iproute2 \
+    iptables \
+    kmod \
+    moreutils \
+    net-tools \
+    openresolv \
+    openvpn \
+    procps \
+    wireguard-tools \
     && apt install -y -t trixie --no-install-recommends \
-       libqt6network6 \
-       libqt6xml6 \
-       libqt6sql6 \
+    libqt6network6 \
+    libqt6xml6 \
+    libqt6sql6 \
     && apt-get clean \
     && apt --purge autoremove -y \
     && rm -rf \
